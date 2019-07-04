@@ -13,7 +13,3 @@ Thumbs.db
 logs
 npm-debug.log*
 node_modules
-
-
-# Project
-lib
