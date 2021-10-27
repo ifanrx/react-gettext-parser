@@ -20,7 +20,7 @@ import {
   getGettextStringFromNodeArgument,
 } from './node-helpers'
 
-const vueParser = require('vue-parser')
+import {parseComponent, compile as compileTemplate} from 'vue-template-compiler'
 
 const noop = () => {}
 
@@ -458,25 +458,29 @@ export const extractMessages = (code, opts = {}) => {
  */
 export const extractMessagesFromFile = (file, opts = {}) => {
   if (file.endsWith('.vue')) {
-    const scripts = vueParser.parse(fs.readFileSync(file, 'utf8'), 'script')
+    const {template, script} = parseComponent(fs.readFileSync(file, 'utf8'))
+    let templateScript = ''
+
+    if (template) {
+      const {render} = compileTemplate(template.content) || ''
+      templateScript = render.replace(/^with\(this\)/, 'function _$FOOBARBAZ$_()')
+    }
+
+    const scripts = templateScript + '\n' + script.content
     return extractMessages(scripts, {
       ...opts,
       filename: file,
       sourceType: JAVASCRIPT,
     });
   }
+
   return extractMessages(fs.readFileSync(file, 'utf8'), {
     ...opts,
     filename: file,
-<<<<<<< HEAD
-    sourceType: (file.endsWith('.ts') || file.endsWith('.tsx')) ? TYPESCRIPT : JAVASCRIPT,
-  });
-}
-=======
     sourceType:
       file.endsWith('.ts') || file.endsWith('.tsx') ? TYPESCRIPT : JAVASCRIPT,
   })
->>>>>>> upstream/master
+}
 
 /**
  * Parses and returns extracted gettext blocks from all files matching a glob
