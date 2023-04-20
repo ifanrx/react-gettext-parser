@@ -20,7 +20,7 @@ import {
   getGettextStringFromNodeArgument,
 } from './node-helpers'
 
-import {parseComponent, compile as compileTemplate} from 'vue-template-compiler'
+import {parse as parseComponent, compileTemplate} from '@vue/compiler-sfc'
 
 const noop = () => {}
 
@@ -458,19 +458,21 @@ export const extractMessages = (code, opts = {}) => {
  */
 export const extractMessagesFromFile = (file, opts = {}) => {
   if (file.endsWith('.vue')) {
-    const {template, script} = parseComponent(fs.readFileSync(file, 'utf8'))
+    const {template, script, scriptSetup} = parseComponent(fs.readFileSync(file, 'utf8')).descriptor
     let templateScript = ''
 
     if (template) {
-      const {render} = compileTemplate(template.content) || ''
-      templateScript = render.replace(/^with\(this\)/, 'function _$FOOBARBAZ$_()')
+      const {code} = compileTemplate({id: file, filename: file, source: template.content})
+      templateScript = code.replace(/^with\(this\)/, 'function _$FOOBARBAZ$_()')
     }
 
-    const scripts = templateScript + '\n' + script.content
+    const scriptTemplate = script || scriptSetup || {}
+    const scripts = templateScript + '\n' + (scriptTemplate.content || '')
+    
     return extractMessages(scripts, {
       ...opts,
       filename: file,
-      sourceType: JAVASCRIPT,
+      sourceType: scriptTemplate.lang === 'ts' ? TYPESCRIPT : JAVASCRIPT,
     });
   }
 
